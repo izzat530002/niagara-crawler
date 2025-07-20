@@ -1,7 +1,7 @@
 const express = require("express");
 const axios = require("axios");
 const cheerio = require("cheerio");
-const fs = require("fs").promises;
+const fs = require("fs");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -31,29 +31,9 @@ async function fetchLinksFromSitemap(url) {
   }
 }
 
-async function scrapeTextFromPages(links) {
-  const results = [];
-
-  for (const link of links) {
-    try {
-      const { data } = await axios.get(link);
-      const $ = cheerio.load(data);
-      const text = $("body").text().replace(/\s+/g, " ").trim();
-      results.push({ url: link, content: text });
-      console.log(`✅ Scraped: ${link}`);
-    } catch (err) {
-      console.warn(`⚠️ Failed to scrape ${link}: ${err.message}`);
-    }
-  }
-
-  return results;
-}
-
 app.get("/", async (req, res) => {
   const links = await fetchLinksFromSitemap(SITEMAP_URL);
-  const results = await scrapeTextFromPages(links.slice(0, 50)); // لتجربة 50 فقط أولًا
-  await fs.writeFile("niagara_data.json", JSON.stringify(results, null, 2));
-  res.json({ message: "Scraping completed", count: results.length });
+  res.json({ links });
 });
 
 app.listen(PORT, "0.0.0.0", () => {
