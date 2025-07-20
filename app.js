@@ -1,13 +1,12 @@
 const express = require("express");
 const axios = require("axios");
 const cheerio = require("cheerio");
-const fs = require("fs");
+const fs = require("fs").promises;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const SITEMAP_URL = "https://reflexcolor.us/traning/sitemap_NCCA2072025.xml";
 
-// 1. جلب الروابط من خريطة الموقع
 async function fetchLinksFromSitemap(url) {
   try {
     const { data } = await axios.get(url);
@@ -32,31 +31,31 @@ async function fetchLinksFromSitemap(url) {
   }
 }
 
-// 2. جلب محتوى كل صفحة نصيًا
-async function fetchPageContent(url) {
-  try {
-    const { data } = await axios.get(url);
-    const $ = cheerio.load(data);
-    const text = $("body").text().replace(/\s+/g, " ").trim();
-    return { url, content: text };
-  } catch (e) {
-    console.error(`❌ Failed to fetch ${url}`);
-    return { url, content: null };
+async function scrapeTextFromPages(links) {
+  const results = [];
+
+  for (const link of links) {
+    try {
+      const { data } = await axios.get(link);
+      const $ = cheerio.load(data);
+      const text = $("body").text().replace(/\s+/g, " ").trim();
+      results.push({ url: link, content: text });
+      console.log(`✅ Scraped: ${link}`);
+    } catch (err) {
+      console.warn(`⚠️ Failed to scrape ${link}: ${err.message}`);
+    }
   }
+
+  return results;
 }
 
-// 3. Route لإظهار البيانات
 app.get("/", async (req, res) => {
   const links = await fetchLinksFromSitemap(SITEMAP_URL);
-  const limited = links.slice(0, 100); // اجعلها أكثر أو أقل حسب الحاجة
-  const results = await Promise.all(limited.map(fetchPageContent));
-
-  // حفظ إلى ملف JSON (اختياري)
-  fs.writeFileSync("niagara_content.json", JSON.stringify(results, null, 2));
-
-  res.json({ count: results.length, pages: results });
+  const results = await scrapeTextFromPages(links.slice(0, 50)); // لتجربة 50 فقط أولًا
+  await fs.writeFile("niagara_data.json", JSON.stringify(results, null, 2));
+  res.json({ message: "Scraping completed", count: results.length });
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`✅ Server running on http://0.0.0.0:${PORT}`);
+  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
 });
