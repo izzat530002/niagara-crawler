@@ -1,6 +1,7 @@
 {
   "name": "niagara-crawler",
   "version": "1.0.0",
+  "description": "Niagara sitemap crawler",
   "main": "app.js",
   "scripts": {
     "start": "node app.js"
